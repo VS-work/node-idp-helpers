@@ -1,8 +1,10 @@
+require('dotenv').config();
 const {
   ManagementClient
 } = require('auth0');
-require('dotenv').config();
+const request = require('request');
 
+// find user and get token by node ManagementClient
 function getToken({
   email,
   provider
@@ -23,25 +25,73 @@ function getToken({
   });
 
   management.users.getByEmail(email).then(users => {
-    if (!users || !users.length) {
-      return cb('User not found');
-    }
-
-    if (!provider) {
-      try {
-        return cb(null, users[0].identities[0].access_token);
-      } catch (error) {
-        return cb('Token not found');
-      }
-    }
-
-    let identity;
-    users.some(user => identity = user.identities.find(id => id.provider === provider));
-
-    if (identity && identity.access_token) {
-      return cb(null, identity.access_token);
-    }
+    parseUsers(users, provider, cb);
   }).catch(cb);
+}
+
+// find user and get token manually using Management API
+function getTokenManual({
+  email,
+  provider
+}, cb) {
+  const options = {
+    method: 'POST',
+    url: `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: {
+      grant_type: 'client_credentials',
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      audience: process.env.AUTH0_AUDIENCE
+    },
+    json: true
+  };
+
+  request(options, (error, response, body) => {
+    if (error) {
+      throw new Error(error);
+    }
+
+    const options = {
+      method: 'GET',
+      url: `https://${process.env.AUTH0_DOMAIN}/api/v2/users-by-email?email=${email}`,
+      headers: {
+        authorization: `Bearer ${body.access_token}`,
+        'content-type': 'application/json'
+      }
+    };
+    // TODO: use promise, waterfall, etc...
+    request(options, (error, response, body) => {
+      if (error) {
+        throw new Error(error)
+      };
+      const users = JSON.parse(body)
+      parseUsers(users, provider, cb);
+    });
+  });
+}
+
+function parseUsers(users, provider, cb) {
+  if (!users || !users.length) {
+    return cb('User not found');
+  }
+
+  if (!provider) {
+    try {
+      return cb(null, users[0].identities[0]);
+    } catch (error) {
+      return cb('Token not found');
+    }
+  }
+
+  let identity;
+  users.some(user => identity = user.identities.find(id => id.provider === provider));
+
+  if (identity) {
+    return cb(null, identity);
+  }
 }
 
 /**
@@ -107,9 +157,11 @@ function getToken({
  */
 
 getToken({
-  email: 'otelnov@gmail.com',
+  email: 'example@email.com',
   provider: 'google-oauth2'
 }, (err, token) => {
   console.log('err: ', err);
-  console.log('token: ', token);
+  console.log('token: ', token.access_token);
 });
+
+module.exports = getToken;
