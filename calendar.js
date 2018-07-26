@@ -1,3 +1,4 @@
+require('dotenv').config();
 const {
   google
 } = require('googleapis');
@@ -16,7 +17,14 @@ async function getCalendar(email) {
         throw new Error(err);
       }
 
-      const oauth2Client = new google.auth.OAuth2();
+      /**
+       * we have refresh_token stored in auth0 so new access_token will be generated automatically
+       * without any code generated on auth flow, but client_id and secret must be provided
+       */
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      );
       oauth2Client.setCredentials({
         access_token,
         refresh_token
@@ -43,8 +51,8 @@ async function syncEvents(email) {
     calendarId: 'primary',
     syncToken,
     pageToken,
-    maxResults: 10
-  }, function (err, response) {
+    maxResults: 15
+  }, (err, response) => {
     if (err) {
       throw new Error(err);
     }
@@ -65,14 +73,16 @@ async function syncEvents(email) {
 
     console.log('items.length', items.length);
 
-    if (items.length > 0) {
-      syncEvents('example@email.com');
+    if (items.length === 15) {
+      syncEvents(email);
     }
-
   });
 }
 
 let syncToken;
 let pageToken;
 
-syncEvents('example@email.com');
+module.exports.getCalendar = getCalendar;
+module.exports.syncEvents = syncEvents;
+
+// syncEvents('email@gmail.com');

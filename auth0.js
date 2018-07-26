@@ -1,7 +1,5 @@
 require('dotenv').config();
-const {
-  ManagementClient
-} = require('auth0');
+const { ManagementClient } = require('auth0');
 const request = require('request');
 
 // find user and get token by node ManagementClient
@@ -156,12 +154,12 @@ function parseUsers(users, provider, cb) {
  *
  */
 
-getToken({
-  email: 'example@email.com',
-  provider: 'google-oauth2'
-}, (err, token) => {
-  console.log('err: ', err);
-  console.log('token: ', token.access_token);
-});
+// getToken({
+//   email: 'example@email.com',
+//   provider: 'google-oauth2'
+// }, (err, token) => {
+//   console.log('err: ', err);
+//   console.log('token: ', token.access_token);
+// });
 
 module.exports = getToken;
